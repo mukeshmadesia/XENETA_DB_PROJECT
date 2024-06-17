@@ -26,7 +26,7 @@
     default is configured in `dbt_project.yml`
 
     ````
-    dbt run --vars '{"start_date": "2021-03-01", "end_date": "2021-03-01", "company_coverage": 5, "supplier_coverage": 2}'
+    dbt run --vars '{"start_date": "2021-03-01", "end_date": "2021-03-01", "company_coverage": 5, "supplier_coverage": 2, "first_run": "Y"}'
     ```
 5. `dbt test` to run Test added in dbt project
 
@@ -49,17 +49,20 @@
 
 
 ## Functional Details
+**(Assumption: Datapoints are Unique in datapoints and charges will not have data for old datapoints)**
 * Data (datapoints and charges) will be loaded in batch or scheduled manner
 * file_metadata - Table introduced to keep track of file processed and to be used for restart in case of batch failure of multiple file.
 * Each run will load one pair (datapoints & charges). Currently loads one pair per run, can be rerun or modified to handle more in single execution as required.
-* Each Run will Automatically identify the next filename to be picked for load.
+* Each Run will Automatically identify the next filename to be picked for load. And will give error if expected file not found.
 * Estimation is done for each day within provided Date Range(start and end date). Provide same date as start and end for single day.
 * Data pipeline - 
-    1. Create a series of dates(estimation_date) within Date Range.
-    2. Identify valid datapoints for each estimation_date i.e. datapoints should be valid on estimation date.
-    3. Sum up the charges for each estimation date as per corresponding exchange rate
-    4. Calculated Average and Median charges for each estimation date for given lane_id, equipment_id.
-    5. Created a counter metadata to be populated before and after each run.
+    1. Create stage tables - after Validation of data, Unique Key, Not Null, Parent Relation of Datapoint_id etc.
+    2. datapoints and charges table will be loaded incrementally.
+    3. Create a series of dates(estimation_date) within Date Range.
+    4. Identify valid datapoints for each estimation_date i.e. datapoints should be valid on estimation date.
+    5. Sum up the charges for each estimation date as per corresponding exchange rate
+    6. Calculated Average and Median charges for each estimation date for given lane_id, equipment_id.
+    7. Created a counter metadata to be populated before and after each run.
 
 ## Pipeline
 
@@ -130,8 +133,9 @@
 
 
 ## Macros
-* Added a Macro - to overide the schema naming convention by DBT - otherwise DBT add default_schema('main') as prefix 
-* Added Macro to Create counter table used as on-run-start: hook 
+* get_custom_schema - Added a Macro - to overide the schema naming convention by DBT - otherwise DBT add default_schema('main') as prefix 
+* create_counter_table - Added Macro to Create counter table used as on-run-start: hook 
+* pre_hook_counter - to get before counters and handle first run when aggregate data table will not be present
 
 ## Models
 
@@ -142,6 +146,7 @@
 ### stage
 * To Transform data and remove error data if found any
 * Used materialization as View for static data - For Error data used Table - For Batch incremental data used Table
+* For Datapoint and Charges - Used Incremental Materialization.
 
 ### final
 * Aggregated and final count data

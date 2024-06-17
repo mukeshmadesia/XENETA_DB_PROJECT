@@ -1,20 +1,28 @@
 {{ config(materialized='table', 
     schema='final', 
     alias='charges_aggregated',
-    pre_hook="""
+    pre_hook="{{ pre_hook_counter() }}",
+    post_hook=[
+        """
         INSERT INTO final.counter (estimation_date, before_lane, before_equipment, before_origin_port, before_dest_port, run_date)
         SELECT 
-            estimation_date, 
-            COUNT(DISTINCT lane_id) AS before_lane,
-            COUNT(DISTINCT equipment_id) AS before_equipment, 
-            COUNT(DISTINCT origin_port_id) AS before_origin_port,
-            COUNT(DISTINCT destination_port_id) AS before_dest_port,
+            subquery.estimation_date, 
+            0 AS before_lane,
+            0 AS before_equipment,
+            0 AS before_origin_port,
+            0 AS before_dest_port,
             CURRENT_TIMESTAMP AS run_date
-        FROM {{ this }}
-        WHERE dq_ok = TRUE
-        GROUP BY estimation_date
-    """,
-    post_hook="""
+        FROM (
+            SELECT 
+                DISTINCT estimation_date as estimation_date
+            FROM {{ this }}
+            WHERE dq_ok = TRUE
+        ) AS subquery
+        LEFT JOIN final.counter c
+        ON subquery.estimation_date = c.estimation_date
+        WHERE c.estimation_date IS NULL
+        """ ,
+        """
         UPDATE final.counter
         SET 
             after_lane = subquery.after_lane,
@@ -23,7 +31,7 @@
             after_dest_port = subquery.after_dest_port
         FROM (
             SELECT 
-                estimation_date, 
+                estimation_date,
                 COUNT(DISTINCT lane_id) AS after_lane,
                 COUNT(DISTINCT equipment_id) AS after_equipment, 
                 COUNT(DISTINCT origin_port_id) AS after_origin_port,
@@ -34,7 +42,7 @@
         ) AS subquery
         WHERE counter.estimation_date = subquery.estimation_date
           AND counter.run_date = (SELECT MAX(run_date) FROM final.counter)
-    """
+        """]
 ) }}
 
 

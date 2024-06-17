@@ -1,5 +1,5 @@
 
-{{ config(materialized='table', schema='stage', alias='datapoints_stage') }}
+{{ config(materialized='incremental', schema='stage', alias='datapoints_stage') }}
 
 WITH cte_stage_datapoints AS (
     SELECT *
@@ -30,3 +30,6 @@ WHERE
     AND company_id IS NOT NULL
     AND supplier_id IS NOT NULL
     AND equipment_id IS NOT NULL
+{% if is_incremental() %}
+    AND datapoint_id not in (select datapoint_id from {{ this }})
+{% endif %}

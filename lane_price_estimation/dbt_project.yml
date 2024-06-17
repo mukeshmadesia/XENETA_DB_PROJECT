@@ -43,9 +43,10 @@ models:
 
 vars:
   start_date: '2021-01-01'
-  end_date: '2021-02-05'
+  end_date: '2021-06-05'
   company_coverage_ok: 5
   supplier_coverage_ok: 2
+  first_run: 'Y'  # 'Y' for first run else 'N'
 
 on-run-start: "{{ create_counter_table() }}"
 
