@@ -1,0 +1,278 @@
+
+version: 2
+
+models:
+  - name: raw_ports_model
+    description: "Contains list of All raw Ports received in CSV file from source"
+    columns:
+      - name: port_id
+        description: "The primary key of this table - Port ID"
+        tests:
+          - not_null
+          - unique:          
+              config:
+                severity: warn
+                error_if: ">2"
+                warn_if: ">0"
+      - name: port_code
+        description: "The 5-character unique code for the port"
+        tests:
+          - unique:
+              config:
+                severity: error
+                error_if: ">2"
+                warn_if: ">0"
+          - not_null    
+      - name: region_slug
+        description: "Slug identifying which region the port belongs to"
+        tests:
+          - not_null
+      - name: port_name
+        description: "Name of the port"
+        tests:
+          - not_null
+      - name: port_country
+        description: "Country where the port is located"
+        tests:
+          - not_null
+      - name: country_code
+        description: "Two-letter country code for the country where the port is located"
+        tests:
+          - not_null
+
+  - name: stage_ports_model
+    description: "Contains list of Ports with transformed and validated details"
+    columns:
+      - name: port_id
+        description: "The primary key of this table - Port ID"
+        tests:
+          - unique
+          - not_null
+      - name: port_code
+        description: "The 5-character unique code for the port"
+        tests:
+          - unique
+          - not_null    
+      - name: region_slug
+        description: "Slug identifying which region the port belongs to"
+        tests:
+          - not_null
+      - name: port_name
+        description: "Name of the port"
+        tests:
+          - not_null
+      - name: port_country
+        description: "Country where the port is located"
+        tests:
+          - not_null
+      - name: country_code
+        description: "Two-letter country code for the country where the port is located"
+        tests:
+          - not_null
+
+  - name: stage_ports_error_model
+    description: "Contains errored Ports which are duplicates"
+
+  - name: stage_regions_model
+    description: "Contain Regions and their Child Regions and Ports name, Note: Child can be port name also"
+    columns:
+      - name: region_slug
+        description: "The slug identifying the region"
+        tests:
+          - not_null
+        
+      - name: region_name
+        description: "The name of the region"
+        tests:
+          - not_null
+       
+      - name: region_parent_slug
+        description: "The slug identifying the parent region"
+
+  - name: stage_exchange_rates_model
+    desciption: "Contains Exchange rate of the day for different currency w.r.t USD"
+    columns:
+      - name: exchange_rate_date
+        description: "The date of the exchange rate"
+        tests:
+          - not_null
+      - name: currency
+        description: "The currency code"
+        tests:
+          - not_null
+      - name: rate
+        description: "The exchange rate value"
+        tests:
+          - not_null
+
+  - name: raw_datapoints_model
+    description: "Contains the raw data points for the shipping data."
+    columns:
+      - name: datapoint_id
+        description: "The primary key of this table - Data Point ID"
+        tests:
+          - unique
+          - not_null
+      - name: created_at
+        description: "Timestamp when the data point was created"
+        tests:
+          - not_null
+      - name: origin_port_id
+        description: "ID of the origin port"
+        tests:
+          - not_null
+      - name: destination_port_id
+        description: "ID of the destination port"
+        tests:
+          - not_null
+      - name: valid_from_date
+        description: "Date from which the data point is valid"
+        tests:
+          - not_null
+      - name: valid_to_date
+        description: "Date until which the data point is valid"
+        tests:
+          - not_null
+      - name: company_id
+        description: "ID of the company"
+        tests:
+          - not_null
+      - name: supplier_id
+        description: "ID of the supplier"
+        tests:
+          - not_null
+      - name: equipment_id
+        description: "ID of the equipment"
+        tests:
+          - not_null
+
+  - name: stage_datapoints_model
+    description: "Contains the data points for the shipping data after required validation."
+    columns:
+      - name: datapoint_id
+        description: "The primary key of this table - Data Point ID"
+        tests:
+          - unique
+          - not_null
+      - name: created_at
+        description: "Timestamp when the data point was created"
+        tests:
+          - not_null
+      - name: origin_port_id
+        description: "ID of the origin port"
+        tests:
+          - not_null
+      - name: destination_port_id
+        description: "ID of the destination port"
+        tests:
+          - not_null
+      - name: valid_from_date
+        description: "Date from which the data point is valid"
+        tests:
+          - not_null
+      - name: valid_to_date
+        description: "Date until which the data point is valid"
+        tests:
+          - not_null
+      - name: company_id
+        description: "ID of the company"
+        tests:
+          - not_null
+      - name: supplier_id
+        description: "ID of the supplier"
+        tests:
+          - not_null
+      - name: equipment_id
+        description: "ID of the equipment"
+        tests:
+          - not_null
+
+  - name: raw_charges_model
+    description: "Contains the raw charges data."
+    columns:
+      - name: datapoint_id
+        description: "The primary key of this table - Data Point ID (Shipment ID)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('raw_datapoints_model')
+              field: datapoint_id
+      - name: currency
+        description: "The currency of the charge."
+        tests:
+          - not_null
+      - name: charge_value
+        description: "The value of the different charge."
+        tests:
+          - not_null
+
+  - name: stage_charges_model
+    description: "Contains the cleaned and validated charges data."
+    columns:
+      - name: datapoint_id
+        description: "Not The primary key of this table - Data Point ID"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stage_datapoints_model')
+              field: datapoint_id
+      - name: currency
+        description: "The currency of the charge."
+        tests:
+          - not_null
+      - name: charge_value
+        description: "The value of the charge."
+        tests:
+          - not_null
+
+  - name: charges_aggregated_by_day  
+    description: "Model to aggregate charges and port information with data quality checks"
+    columns:
+      - name: estimation_date
+        description: "The date for the estimation"
+        tests:
+          - not_null
+      - name: lane_id
+        description: "The lane identifier, generated by concatenating origin_port_id, 0 and destination_port_id"
+        tests:
+          - not_null
+      - name: equipment_id
+        description: "The equipment identifier"
+        tests:
+          - not_null
+      - name: avg_charge_usd
+        description: "The average charge in USD"
+        tests:
+          - not_null
+      - name: median_charge_usd
+        description: "The median charge in USD"
+        tests:
+          - not_null
+      - name: origin_port_id
+        description: "The ID of the origin port"
+        tests:
+          - not_null
+      - name: origin_port_name
+        description: "The name of the origin port"
+        tests:
+          - not_null
+      - name: origin_region_slug
+        description: "The region slug of the origin port"
+        tests:
+          - not_null
+      - name: destination_port_id
+        description: "The ID of the destination port"
+        tests:
+          - not_null
+      - name: destination_port_name
+        description: "The name of the destination port"
+        tests:
+          - not_null
+      - name: destination_region_slug
+        description: "The region slug of the destination port"
+        tests:
+          - not_null
+      - name: dq_ok
+        description: "Data quality indicator, True if data meets quality criteria"
+        tests:
+          - not_null
